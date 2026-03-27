@@ -2,11 +2,20 @@ import os
 import glob
 import json
 import cv2
-import pybboxes as pbx
 import yaml
 import argparse
 from ultralytics import YOLO
 import shutil
+
+
+def yolo_to_voc(bbox, img_w, img_h):
+    cx, cy, w, h = bbox
+    x_min = (cx - w / 2) * img_w
+    y_min = (cy - h / 2) * img_h
+    x_max = (cx + w / 2) * img_w
+    y_max = (cy + h / 2) * img_h
+    return (x_min, y_min, x_max, y_max)
+
 from rich.console import Console
 from rich.progress import track
 from natsort import natsorted
@@ -88,7 +97,7 @@ if(config["generate_jsons"]):
                     with open(file, 'r') as fin:
                         for line in fin.readlines():
                             line = [float(item) for item in line.split()[1:]]
-                            line = pbx.convert_bbox(line, from_type="yolo", to_type="voc", image_size=(width,height))
+                            line = yolo_to_voc(line, width, height)
                             if(frame_num not in data_dict.keys()):
                                 data_dict[frame_num] = [] # Initialize as empty list
                             data_dict[frame_num].append(line)
