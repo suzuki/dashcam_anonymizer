@@ -39,27 +39,18 @@ console.print("Loading YOLO Model...", style="bold green")
 model = YOLO(config["model_path"])
 
 if(config["generate_detections"]):
+    if os.path.exists("runs"):
+        shutil.rmtree("runs")
     console.print("Generating YOLO Detections for the Videos", style="bold green")
-    # Note: The YOLO model() call is generally capable of finding all supported video formats in a directory.
-    # No changes are needed here.
-    if(config["gpu_avail"]):
-        console.print("GPU Available, Running on GPU", style="bold green")
-        _ = model(source=config['videos_path'],
-                save=False,
-                save_txt=True,
-                conf=config['detection_conf_thresh'],
-                device='cuda:0',
-                project='runs/detect/',
-                name="yolo_videos_pred")
-    else:
-        console.print("GPU Not Available, Running on CPU", style="bold orange")
-        _ = model(source=config['videos_path'],
-                save=False,
-                save_txt=True,
-                conf=config['detection_conf_thresh'],
-                device='cpu',
-                project='runs/detect/',
-                name="yolo_videos_pred")
+    device = 'cuda:0' if config["gpu_avail"] else 'cpu'
+    console.print(f"Running on {'GPU' if config['gpu_avail'] else 'CPU'}", style="bold green")
+    _ = model(source=config['videos_path'],
+            save=False,
+            save_txt=True,
+            conf=config['detection_conf_thresh'],
+            device=device,
+            name="yolo_videos_pred",
+            exist_ok=True)
     
 # =========================================================================================
 # CHANGE 1: Search for multiple video file extensions, not just .mp4
@@ -159,8 +150,13 @@ for video in track(videos):
             frame_size = (frame_width, frame_height)
             
             fps = round(video_capture.get(cv2.CAP_PROP_FPS))
-            # 'avc1' is a good choice for H.264 codec in an .mp4 container.
-            output_video = cv2.VideoWriter(out_vid_path, cv2.VideoWriter_fourcc(*'avc1'), fps, frame_size)
+            # Try H.264 first, fall back to MPEG-4 if unavailable
+            for codec in ['avc1', 'mp4v']:
+                fourcc = cv2.VideoWriter_fourcc(*codec)
+                output_video = cv2.VideoWriter(out_vid_path, fourcc, fps, frame_size)
+                if output_video.isOpened():
+                    break
+                output_video.release()
             count = 1
             while True:
                 ret, frame = video_capture.read()

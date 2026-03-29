@@ -9,6 +9,7 @@ dependencies = [
     "pyyaml>=6.0",
     "natsort",
     "rich",
+    "dill",
 ]
 
 [project.optional-dependencies]

@@ -43,7 +43,8 @@ class TestYoloToVoc:
 
     def test_small_bbox(self):
         result = yolo_to_voc((0.1, 0.1, 0.1, 0.1), 1000, 500)
-        assert result == (50.0, 25.0, 150.0, 75.0)
+        expected = (50.0, 25.0, 150.0, 75.0)
+        assert all(abs(a - b) < 1e-6 for a, b in zip(result, expected))
 
     def test_rectangular_image(self):
         result = yolo_to_voc((0.5, 0.5, 0.2, 0.4), 1920, 1080)

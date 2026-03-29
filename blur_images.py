@@ -20,8 +20,12 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--config", help = "path of the training configuartion file", required = True)
 args = parser.parse_args()
 
-if (os.path.exists("annot_txt")):
-    os.rmdir("annot_txt")
+import shutil
+
+if os.path.exists("annot_txt"):
+    shutil.rmtree("annot_txt")
+if os.path.exists("runs"):
+    shutil.rmtree("runs")
 
 #Reading the configuration file
 with open(args.config, 'r') as f:
@@ -32,22 +36,14 @@ with open(args.config, 'r') as f:
 
 model = YOLO(config["model_path"])
 
-if(config["gpu_avail"]):
-    _ = model(source=config['images_path'],
-            save=False,
-            save_txt=True,
-            conf=config['detection_conf_thresh'],
-            device='cuda:0',
-            project='runs/detect/',
-            name="yolo_images_pred")
-else:
-    _ = model(source=config['images_path'],
-            save=False,
-            save_txt=True,
-            conf=config['detection_conf_thresh'],
-            device='cpu',
-            project="runs/detect/",
-            name="yolo_images_pred")
+device = 'cuda:0' if config["gpu_avail"] else 'cpu'
+_ = model(source=config['images_path'],
+        save=False,
+        save_txt=True,
+        conf=config['detection_conf_thresh'],
+        device=device,
+        name="yolo_images_pred",
+        exist_ok=True)
 
 
 #images = [int(item.split("/")[1].replace(config['img_format'], "")) for item in images]
@@ -57,19 +53,18 @@ os.mkdir("annot_txt")
 
 annot_dir = f'runs/detect/yolo_images_pred/labels/'
 
-try:
+if os.path.exists(annot_dir):
     for file in os.listdir(annot_dir):
-        if (file.endswith('.txt')):
-            #frame_num = int(file.replace(".txt","").split("_")[1])
-            with open(annot_dir+file, 'r') as fin:
+        if file.endswith('.txt'):
+            with open(os.path.join(annot_dir, file), 'r') as fin:
                 for line in fin.readlines():
                     line = [float(item) for item in line.split()[1:]]
                     line = yolo_to_voc(line, config["img_width"], config["img_height"])
                     data_string = " ".join(str(num) for num in line)
-                    with open(f"annot_txt/{os.path.basename(file)}", "a") as f:
+                    with open(f"annot_txt/{file}", "a") as f:
                         f.write(data_string+"\n")
-except:
-    print(f'{os.path.basename(file)} has no detected objects.')
+else:
+    print("No detections found.")
 
 
 def blur_regions(image, regions):
@@ -104,7 +99,7 @@ for txt_file in txt_files:
     bboxes = []
     for line in lines:
         values = line.strip().split()
-        x_min, y_min, x_max, y_max = map(int, values)  # Assuming VOC format with x_min, y_min, x_max, y_max
+        x_min, y_min, x_max, y_max = [int(float(v)) for v in values]
         bboxes.append([x_min, y_min, x_max, y_max])
 
     # Read the corresponding image
