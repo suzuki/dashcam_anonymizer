@@ -35,8 +35,7 @@ The setup script installs all dependencies and downloads the pre-trained YOLO mo
 ### Using pip
 ```
 pip install -e ".[dev]"
-mkdir -p model
-gdown 1uV8IMuGDbmDabdjyeSy4SUKV9OS-ULbe -O model/best.pt
+python -m gdown 1uV8IMuGDbmDabdjyeSy4SUKV9OS-ULbe -O model/best.pt
 ```
 
 ## Blurring Images in a Directory

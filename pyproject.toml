@@ -1,3 +1,10 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["utils", "blur_images", "blur_videos", "train"]
+
 [project]
 name = "dashcam-anonymizer"
 version = "1.0.0"

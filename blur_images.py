@@ -5,15 +5,7 @@ import cv2
 import yaml
 import argparse
 from ultralytics import YOLO
-
-
-def yolo_to_voc(bbox, img_w, img_h):
-    cx, cy, w, h = bbox
-    x_min = (cx - w / 2) * img_w
-    y_min = (cy - h / 2) * img_h
-    x_max = (cx + w / 2) * img_w
-    y_max = (cy + h / 2) * img_h
-    return (x_min, y_min, x_max, y_max)
+from utils import yolo_to_voc, blur_regions
 
 
 parser = argparse.ArgumentParser()
@@ -67,17 +59,6 @@ else:
     print("No detections found.")
 
 
-def blur_regions(image, regions):
-    """
-    Blurs the image, given the x1,y1,x2,y2 cordinates using Gaussian Blur.
-    """
-    for region in regions:
-        x1,y1,x2,y2 = region
-        x1, y1, x2, y2 = round(x1), round(y1), round(x2), round(y2)
-        roi = image[y1:y2, x1:x2]
-        blurred_roi = cv2.GaussianBlur(roi, (config['blur_radius'], config['blur_radius']), 0)
-        image[y1:y2, x1:x2] = blurred_roi
-    return image
 
 txt_folder = 'annot_txt/'
 image_folder = config['images_path']
@@ -109,7 +90,7 @@ for txt_file in txt_files:
 
     # Apply Gaussian blur to each bounding box region
     for bbox in bboxes:
-        image = blur_regions(image, bboxes)
+        image = blur_regions(image, bboxes, blur_radius=config['blur_radius'])
 
     # Save the blurred image to the output folder
     output_file = txt_file.replace('.txt', '_blurred.jpg')

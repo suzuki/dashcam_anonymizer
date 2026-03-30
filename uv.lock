@@ -257,7 +257,7 @@ wheels = [
 [[package]]
 name = "dashcam-anonymizer"
 version = "1.0.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "dill" },
     { name = "natsort" },

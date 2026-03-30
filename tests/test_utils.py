@@ -2,31 +2,10 @@ import numpy as np
 import cv2
 import yaml
 import os
+import sys
 
-
-def yolo_to_voc(bbox, img_w, img_h):
-    """Copy of the function from blur_images.py for isolated testing."""
-    cx, cy, w, h = bbox
-    x_min = (cx - w / 2) * img_w
-    y_min = (cy - h / 2) * img_h
-    x_max = (cx + w / 2) * img_w
-    y_max = (cy + h / 2) * img_h
-    return (x_min, y_min, x_max, y_max)
-
-
-def blur_regions(image, regions, blur_radius=31):
-    """Copy of the function from blur_images.py/blur_videos.py for isolated testing."""
-    for region in regions:
-        x1, y1, x2, y2 = region
-        x1, y1, x2, y2 = round(x1), round(y1), round(x2), round(y2)
-        y1, y2 = max(0, y1), min(image.shape[0], y2)
-        x1, x2 = max(0, x1), min(image.shape[1], x2)
-        if x1 < x2 and y1 < y2:
-            roi = image[y1:y2, x1:x2]
-            blur_k = blur_radius if blur_radius % 2 != 0 else blur_radius + 1
-            blurred_roi = cv2.GaussianBlur(roi, (blur_k, blur_k), 0)
-            image[y1:y2, x1:x2] = blurred_roi
-    return image
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+from utils import yolo_to_voc, blur_regions
 
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
@@ -65,7 +44,10 @@ class TestBlurRegions:
         assert result.shape == (100, 100, 3)
 
     def test_blur_modifies_region(self):
-        image = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
+        # Use a deterministic gradient pattern to ensure blur always changes the ROI
+        image = np.zeros((100, 100, 3), dtype=np.uint8)
+        for i in range(100):
+            image[i, :, :] = i * 2  # horizontal gradient
         original = image.copy()
         regions = [(10, 10, 50, 50)]
         result = blur_regions(image, regions)

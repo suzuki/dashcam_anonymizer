@@ -6,15 +6,7 @@ import yaml
 import argparse
 from ultralytics import YOLO
 import shutil
-
-
-def yolo_to_voc(bbox, img_w, img_h):
-    cx, cy, w, h = bbox
-    x_min = (cx - w / 2) * img_w
-    y_min = (cy - h / 2) * img_h
-    x_max = (cx + w / 2) * img_w
-    y_max = (cy + h / 2) * img_h
-    return (x_min, y_min, x_max, y_max)
+from utils import yolo_to_voc, blur_regions
 
 from rich.console import Console
 from rich.progress import track
@@ -100,23 +92,6 @@ if(config["generate_jsons"]):
             print(f'Could not process annotations for {video}. Error: {e}')
 
 
-def blur_regions(image, regions):
-    """
-    Blurs the image, given the x1,y1,x2,y2 cordinates using Gaussian Blur.
-    """
-    for region in regions:
-        x1,y1,x2,y2 = region
-        x1, y1, x2, y2 = round(x1), round(y1), round(x2), round(y2)
-        # Ensure coordinates are within image bounds
-        y1, y2 = max(0, y1), min(image.shape[0], y2)
-        x1, x2 = max(0, x1), min(image.shape[1], x2)
-        if x1 < x2 and y1 < y2:
-            roi = image[y1:y2, x1:x2]
-            # Kernel size must be odd
-            blur_k = config["blur_radius"] if config["blur_radius"] % 2 != 0 else config["blur_radius"] + 1
-            blurred_roi = cv2.GaussianBlur(roi, (blur_k, blur_k), 0)
-            image[y1:y2, x1:x2] = blurred_roi
-    return image
 
 
 if not(os.path.exists(config["output_folder"])):
@@ -165,7 +140,7 @@ for video in track(videos):
                     break
                 
                 if str(count) in data:
-                    frame = blur_regions(frame, data[str(count)])
+                    frame = blur_regions(frame, data[str(count)], blur_radius=config["blur_radius"])
 
                 output_video.write(frame)
                 count+=1
