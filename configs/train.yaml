@@ -1,0 +1,29 @@
+# Training configuration for YOLO model fine-tuning.
+# Usage: uv run python train.py --config configs/train.yaml
+
+# Base model to fine-tune
+# YOLOv8: yolov8n.pt, yolov8s.pt, yolov8m.pt, yolov8l.pt, yolov8x.pt
+# YOLO26: yolo26n.pt, yolo26s.pt, yolo26m.pt, yolo26l.pt, yolo26x.pt
+model: yolov8n.pt
+
+# Path to dataset YAML configuration
+data: datasets/openimages-face-plate/dataset.yaml
+
+# Training parameters
+epochs: 100
+imgsz: 640
+batch: -1         # -1 = auto batch size
+patience: 50      # early stopping patience (0 = disabled)
+optimizer: auto   # auto, AdamW, SGD, etc.
+workers: 8        # dataloader workers
+
+# Device: auto (uses get_device()), cpu, cuda:0, mps, etc.
+device: auto
+
+# Output
+project: runs/train
+name: exp
+
+# Post-training
+deploy: false        # auto-copy best.pt to model/ after training
+deploy_name: best.pt # filename for deployed model (e.g. yolo26n_100ep.pt)
