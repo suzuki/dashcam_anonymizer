@@ -6,7 +6,7 @@ import yaml
 import argparse
 from ultralytics import YOLO
 import shutil
-from utils import yolo_to_voc, blur_regions, get_device
+from utils import yolo_to_voc, blur_regions, get_device, get_tracking_config, open_video_writer
 
 from rich.console import Console
 from rich.progress import track
@@ -33,9 +33,7 @@ model = YOLO(config["model_path"])
 device = get_device(config["gpu_avail"])
 console.print(f"Running on device: {device}", style="bold green")
 
-use_tracking = config.get("use_tracking", False)
-tracker = config.get("tracker", "botsort.yaml")
-interpolate_frames = config.get("interpolate_frames", 0)
+tracking_config = get_tracking_config(config)
 
 # =========================================================================================
 # Search for multiple video file extensions
@@ -53,23 +51,17 @@ if not(os.path.exists(config["output_folder"])):
 anonymized_videos_path = config["output_folder"]
 
 
-def process_video_with_tracking(video_path, output_path, model, config):
+def process_video_with_tracking(video_path, output_path, model, config, device,
+                                tracker, interpolate_frames):
     """Process a single video using object tracking for temporally consistent detection."""
     video_capture = cv2.VideoCapture(video_path)
     frame_width = int(video_capture.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
     frame_size = (frame_width, frame_height)
     fps = round(video_capture.get(cv2.CAP_PROP_FPS))
-    total_frames = int(video_capture.get(cv2.CAP_PROP_FRAME_COUNT))
     video_capture.release()
 
-    # Set up video writer
-    for codec in ['avc1', 'mp4v']:
-        fourcc = cv2.VideoWriter_fourcc(*codec)
-        output_video = cv2.VideoWriter(output_path, fourcc, fps, frame_size)
-        if output_video.isOpened():
-            break
-        output_video.release()
+    output_video = open_video_writer(output_path, fps, frame_size)
 
     # Track last known boxes per track ID for interpolation
     last_seen = {}  # track_id -> (frame_num, [x1, y1, x2, y2])
@@ -89,11 +81,14 @@ def process_video_with_tracking(video_path, output_path, model, config):
         frame = result.orig_img
         boxes_to_blur = []
 
-        if result.boxes is not None and len(result.boxes) > 0:
+        has_boxes = result.boxes is not None and len(result.boxes) > 0
+        has_track_ids = has_boxes and result.boxes.id is not None
+
+        if has_boxes:
             xyxy = result.boxes.xyxy.cpu().tolist()
             track_ids = (
                 result.boxes.id.cpu().tolist()
-                if result.boxes.id is not None
+                if has_track_ids
                 else [None] * len(xyxy)
             )
 
@@ -102,10 +97,12 @@ def process_video_with_tracking(video_path, output_path, model, config):
                 if tid is not None:
                     last_seen[tid] = (frame_num, box)
 
-        # Interpolation: blur regions where tracked objects recently disappeared
-        if interpolate_frames > 0:
+        # Interpolation: blur regions where tracked objects recently disappeared.
+        # Skip interpolation when detections exist but tracker returned no IDs,
+        # to avoid blurring stale boxes alongside untracked current detections.
+        if interpolate_frames > 0 and not (has_boxes and not has_track_ids):
             active_ids = set()
-            if result.boxes is not None and result.boxes.id is not None:
+            if has_track_ids:
                 active_ids = set(result.boxes.id.cpu().tolist())
 
             for tid, (last_frame, last_box) in list(last_seen.items()):
@@ -134,12 +131,7 @@ def process_video_legacy(video_path, output_path, data, config):
     frame_size = (frame_width, frame_height)
     fps = round(video_capture.get(cv2.CAP_PROP_FPS))
 
-    for codec in ['avc1', 'mp4v']:
-        fourcc = cv2.VideoWriter_fourcc(*codec)
-        output_video = cv2.VideoWriter(output_path, fourcc, fps, frame_size)
-        if output_video.isOpened():
-            break
-        output_video.release()
+    output_video = open_video_writer(output_path, fps, frame_size)
 
     count = 1
     while True:
@@ -155,13 +147,14 @@ def process_video_legacy(video_path, output_path, data, config):
     output_video.release()
 
 
-if use_tracking:
+if tracking_config["use_tracking"]:
     # =====================================================================
     # Tracking mode: single-pass processing with BoT-SORT/ByteTrack
     # =====================================================================
     console.print(
-        f"Processing {len(videos)} videos with tracking (tracker={tracker}, "
-        f"interpolate_frames={interpolate_frames})",
+        f"Processing {len(videos)} videos with tracking "
+        f"(tracker={tracking_config['tracker']}, "
+        f"interpolate_frames={tracking_config['interpolate_frames']})",
         style="bold green",
     )
 
@@ -169,7 +162,11 @@ if use_tracking:
         vid_name, _ = os.path.splitext(os.path.basename(video))
         out_vid_path = osj(anonymized_videos_path, vid_name + '.mp4')
 
-        frame_count = process_video_with_tracking(video, out_vid_path, model, config)
+        frame_count = process_video_with_tracking(
+            video, out_vid_path, model, config, device,
+            tracker=tracking_config["tracker"],
+            interpolate_frames=tracking_config["interpolate_frames"],
+        )
         console.print(f"Processed {vid_name} ({frame_count} frames with tracking)")
 
 else:

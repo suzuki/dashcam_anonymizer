@@ -5,6 +5,8 @@ import yaml
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
+from utils import get_tracking_config
+
 PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
 
 
@@ -13,27 +15,33 @@ class TestTrackingConfig:
         config_path = os.path.join(PROJECT_ROOT, "configs", "vid_blur.yaml")
         with open(config_path) as f:
             config = yaml.safe_load(f)
-        assert "use_tracking" in config
-        assert isinstance(config["use_tracking"], bool)
-        assert "tracker" in config
-        assert config["tracker"] in ("botsort.yaml", "bytetrack.yaml")
-        assert "interpolate_frames" in config
-        assert isinstance(config["interpolate_frames"], int)
-        assert config["interpolate_frames"] >= 0
+        tc = get_tracking_config(config)
+        assert isinstance(tc["use_tracking"], bool)
+        assert tc["tracker"] in ("botsort.yaml", "bytetrack.yaml")
+        assert isinstance(tc["interpolate_frames"], int)
+        assert tc["interpolate_frames"] >= 0
 
     def test_tracking_defaults_when_missing(self):
-        """Config without tracking keys should fall back to defaults in blur_videos."""
+        """Config without tracking keys should fall back to defaults."""
         config = {
             "model_path": "model/best.pt",
             "videos_path": "videos/",
-            "detection_conf_thresh": 0.1,
-            "gpu_avail": False,
-            "blur_radius": 31,
-            "output_folder": "blurred_videos",
         }
-        assert config.get("use_tracking", False) is False
-        assert config.get("tracker", "botsort.yaml") == "botsort.yaml"
-        assert config.get("interpolate_frames", 0) == 0
+        tc = get_tracking_config(config)
+        assert tc["use_tracking"] is False
+        assert tc["tracker"] == "botsort.yaml"
+        assert tc["interpolate_frames"] == 0
+
+    def test_tracking_config_overrides(self):
+        config = {
+            "use_tracking": True,
+            "tracker": "bytetrack.yaml",
+            "interpolate_frames": 10,
+        }
+        tc = get_tracking_config(config)
+        assert tc["use_tracking"] is True
+        assert tc["tracker"] == "bytetrack.yaml"
+        assert tc["interpolate_frames"] == 10
 
 
 class TestInterpolationLogic:
