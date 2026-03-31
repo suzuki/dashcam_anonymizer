@@ -6,3 +6,8 @@ generate_detections: True #False if the YOLO annotations already present (saves 
 generate_jsons: True
 blur_radius: 31 #increase to increase blur intensity (odd values)
 output_folder: blurred_videos
+
+# Tracking settings (recommended for better detection consistency)
+use_tracking: true            # use BoT-SORT/ByteTrack for frame-to-frame tracking
+tracker: botsort.yaml         # botsort.yaml (recommended for dashcam) or bytetrack.yaml
+interpolate_frames: 5         # continue blurring N frames after a track is lost (0=disabled)

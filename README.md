@@ -53,9 +53,16 @@ The resulting blurred images will be stored in the directory specified in the YA
 uv run python blur_videos.py --config configs/vid_blur.yaml
 ```
 
+By default, tracking mode is enabled (`use_tracking: true` in the config). This uses BoT-SORT to track faces and license plates across frames, which:
+- Reduces missed detections when objects are temporarily occluded
+- Provides smoother, more consistent bounding boxes
+- Continues blurring for a few frames after a track is lost (`interpolate_frames`)
+
+To use the legacy frame-by-frame detection mode, set `use_tracking: false` in the config.
+
 Notes:
 1. The configuration files are slightly different for videos and images. Make sure to choose and edit the correct ones depending upon the modality.
-2. This is designed to process all the contents in a given directory at once. If the blurring is to be re-run, make sure to delete the `runs` directory, as it may lead to new file names within the runs, which will cause errors.
+2. In legacy mode (`use_tracking: false`), if the blurring is to be re-run, make sure to delete the `runs` directory, as it may lead to new file names within the runs, which will cause errors.
 
 ## Running Tests
 
