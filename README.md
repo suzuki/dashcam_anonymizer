@@ -2,7 +2,7 @@
 
 ### This repository blurs human faces and license plates in images and videos using [YOLO by Ultralytics](https://github.com/ultralytics/ultralytics), fine-tuned on images from the [OpenImagesDatasetV7](https://storage.googleapis.com/openimages/web/index.html).
 
-The bundled model is a YOLOv8 fine-tuned checkpoint. The latest ultralytics library also supports YOLO11 and YOLO26 architectures -- see [Retraining with YOLO26](#retraining-with-yolo26) for details.
+The bundled model is a YOLOv8 fine-tuned checkpoint. The latest ultralytics library also supports YOLO11 and YOLO26 architectures -- see [Retraining](#retraining) for details.
 
 <p align="center">
 <img src="media/demo.gif"/>
@@ -63,22 +63,62 @@ Notes:
 uv run pytest tests/
 ```
 
-## Retraining with YOLO26
+## Retraining
 
-The bundled model (`model/best.pt`) uses the YOLOv8 architecture. To take advantage of newer architectures like YOLO26 (featuring end-to-end NMS-free inference and up to 43% faster CPU inference), you can retrain on your dataset:
+The bundled model (`model/best.pt`) uses the YOLOv8 architecture. You can retrain on the original OpenImagesDatasetV7, or use your own dataset in YOLO format.
 
-1. Prepare your dataset in YOLO format (see `dataset.yaml` for the expected structure).
+### 1. Install training dependencies
 
-2. Run the training script:
 ```
-uv run python train.py --model yolo26n.pt --data dataset.yaml --epochs 100
+uv sync --extra train
 ```
 
-Available base models: `yolo26n.pt`, `yolo26s.pt`, `yolo26m.pt`, `yolo26l.pt`, `yolo26x.pt`
+### 2. Prepare the dataset
 
-3. Copy the trained model:
+Download face and license plate images from OpenImagesDatasetV7:
+
 ```
-cp runs/detect/train/weights/best.pt model/best.pt
+uv run python scripts/prepare_dataset.py
+```
+
+For a quick test with a small subset:
+```
+uv run python scripts/prepare_dataset.py --max-samples 100
+```
+
+This creates the dataset in `datasets/openimages-face-plate/` with the standard YOLO directory layout.
+
+### 3. Train the model
+
+**YOLOv8** (same architecture as the bundled model):
+```
+uv run python train.py --model yolov8n.pt --data datasets/openimages-face-plate/dataset.yaml --epochs 100
+```
+
+**YOLO26** (NMS-free inference, up to 43% faster CPU inference):
+```
+uv run python train.py --model yolo26n.pt --data datasets/openimages-face-plate/dataset.yaml --epochs 100
+```
+
+Available base models:
+- YOLOv8: `yolov8n.pt`, `yolov8s.pt`, `yolov8m.pt`, `yolov8l.pt`, `yolov8x.pt`
+- YOLO26: `yolo26n.pt`, `yolo26s.pt`, `yolo26m.pt`, `yolo26l.pt`, `yolo26x.pt`
+
+You can also use a YAML config file:
+```
+uv run python train.py --config configs/train.yaml
+```
+
+### 4. Deploy the trained model
+
+Auto-deploy after training:
+```
+uv run python train.py --model yolov8n.pt --data datasets/openimages-face-plate/dataset.yaml --deploy
+```
+
+Or manually copy:
+```
+cp runs/train/exp/weights/best.pt model/best.pt
 ```
 
 No code changes are needed -- the blur scripts will automatically use the new model.

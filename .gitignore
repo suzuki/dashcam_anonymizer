@@ -1,11 +1,15 @@
 **/*.mp4
 images/*.png
-model/best.pt
+model/*.pt
+*.pt
 **/*.json
-runs/detect/yolo_videos_pred/labels/*.txt
+runs/
+datasets/
 .vscode/
 annot_jsons/*.json
 blurred_videos/*.mp4
 .DS_Store/
 videos/.DS_Store/
 .DS_Store
+__pycache__/
+*.egg-info/

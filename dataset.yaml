@@ -12,7 +12,7 @@
 #       ├── val/
 #       └── test/
 
-path: /path/to/dataset
+path: datasets/openimages-face-plate
 train: images/train
 val: images/val
 test: images/test
