@@ -2,11 +2,12 @@ import os
 import glob
 import json
 import cv2
-import pybboxes as pbx
 import yaml
 import argparse
 from ultralytics import YOLO
 import shutil
+from utils import yolo_to_voc, blur_regions, get_device
+
 from rich.console import Console
 from rich.progress import track
 from natsort import natsorted
@@ -30,27 +31,19 @@ console.print("Loading YOLO Model...", style="bold green")
 model = YOLO(config["model_path"])
 
 if(config["generate_detections"]):
+    if os.path.exists("runs"):
+        shutil.rmtree("runs")
     console.print("Generating YOLO Detections for the Videos", style="bold green")
-    # Note: The YOLO model() call is generally capable of finding all supported video formats in a directory.
-    # No changes are needed here.
-    if(config["gpu_avail"]):
-        console.print("GPU Available, Running on GPU", style="bold green")
-        _ = model(source=config['videos_path'],
-                save=False,
-                save_txt=True,
-                conf=config['detection_conf_thresh'],
-                device='cuda:0',
-                project='runs/detect/',
-                name="yolo_videos_pred")
-    else:
-        console.print("GPU Not Available, Running on CPU", style="bold orange")
-        _ = model(source=config['videos_path'],
-                save=False,
-                save_txt=True,
-                conf=config['detection_conf_thresh'],
-                device='cpu',
-                project='runs/detect/',
-                name="yolo_videos_pred")
+    device = get_device(config["gpu_avail"])
+    console.print(f"Running on device: {device}", style="bold green")
+    _ = model(source=config['videos_path'],
+            save=False,
+            save_txt=True,
+            conf=config['detection_conf_thresh'],
+            device=device,
+            project=os.path.join(os.getcwd(), "runs", "detect"),
+            name="yolo_videos_pred",
+            exist_ok=True)
     
 # =========================================================================================
 # CHANGE 1: Search for multiple video file extensions, not just .mp4
@@ -88,7 +81,7 @@ if(config["generate_jsons"]):
                     with open(file, 'r') as fin:
                         for line in fin.readlines():
                             line = [float(item) for item in line.split()[1:]]
-                            line = pbx.convert_bbox(line, from_type="yolo", to_type="voc", image_size=(width,height))
+                            line = yolo_to_voc(line, width, height)
                             if(frame_num not in data_dict.keys()):
                                 data_dict[frame_num] = [] # Initialize as empty list
                             data_dict[frame_num].append(line)
@@ -100,23 +93,6 @@ if(config["generate_jsons"]):
             print(f'Could not process annotations for {video}. Error: {e}')
 
 
-def blur_regions(image, regions):
-    """
-    Blurs the image, given the x1,y1,x2,y2 cordinates using Gaussian Blur.
-    """
-    for region in regions:
-        x1,y1,x2,y2 = region
-        x1, y1, x2, y2 = round(x1), round(y1), round(x2), round(y2)
-        # Ensure coordinates are within image bounds
-        y1, y2 = max(0, y1), min(image.shape[0], y2)
-        x1, x2 = max(0, x1), min(image.shape[1], x2)
-        if x1 < x2 and y1 < y2:
-            roi = image[y1:y2, x1:x2]
-            # Kernel size must be odd
-            blur_k = config["blur_radius"] if config["blur_radius"] % 2 != 0 else config["blur_radius"] + 1
-            blurred_roi = cv2.GaussianBlur(roi, (blur_k, blur_k), 0)
-            image[y1:y2, x1:x2] = blurred_roi
-    return image
 
 
 if not(os.path.exists(config["output_folder"])):
@@ -150,8 +126,13 @@ for video in track(videos):
             frame_size = (frame_width, frame_height)
             
             fps = round(video_capture.get(cv2.CAP_PROP_FPS))
-            # 'avc1' is a good choice for H.264 codec in an .mp4 container.
-            output_video = cv2.VideoWriter(out_vid_path, cv2.VideoWriter_fourcc(*'avc1'), fps, frame_size)
+            # Try H.264 first, fall back to MPEG-4 if unavailable
+            for codec in ['avc1', 'mp4v']:
+                fourcc = cv2.VideoWriter_fourcc(*codec)
+                output_video = cv2.VideoWriter(out_vid_path, fourcc, fps, frame_size)
+                if output_video.isOpened():
+                    break
+                output_video.release()
             count = 1
             while True:
                 ret, frame = video_capture.read()
@@ -160,7 +141,7 @@ for video in track(videos):
                     break
                 
                 if str(count) in data:
-                    frame = blur_regions(frame, data[str(count)])
+                    frame = blur_regions(frame, data[str(count)], blur_radius=config["blur_radius"])
 
                 output_video.write(frame)
                 count+=1

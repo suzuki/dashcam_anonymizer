@@ -1,0 +1,22 @@
+# Dataset configuration for training YOLO on face and license plate detection.
+# Update the 'path' field to point to your dataset directory.
+#
+# Expected directory structure:
+#   /path/to/dataset/
+#   ├── images/
+#   │   ├── train/
+#   │   ├── val/
+#   │   └── test/
+#   └── labels/
+#       ├── train/
+#       ├── val/
+#       └── test/
+
+path: datasets/openimages-face-plate
+train: images/train
+val: images/val
+test: images/test
+
+names:
+  0: face
+  1: license_plate
