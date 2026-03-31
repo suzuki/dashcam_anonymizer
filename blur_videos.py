@@ -6,7 +6,7 @@ import yaml
 import argparse
 from ultralytics import YOLO
 import shutil
-from utils import yolo_to_voc, blur_regions
+from utils import yolo_to_voc, blur_regions, get_device
 
 from rich.console import Console
 from rich.progress import track
@@ -34,13 +34,14 @@ if(config["generate_detections"]):
     if os.path.exists("runs"):
         shutil.rmtree("runs")
     console.print("Generating YOLO Detections for the Videos", style="bold green")
-    device = 'cuda:0' if config["gpu_avail"] else 'cpu'
-    console.print(f"Running on {'GPU' if config['gpu_avail'] else 'CPU'}", style="bold green")
+    device = get_device(config["gpu_avail"])
+    console.print(f"Running on device: {device}", style="bold green")
     _ = model(source=config['videos_path'],
             save=False,
             save_txt=True,
             conf=config['detection_conf_thresh'],
             device=device,
+            project=os.path.join(os.getcwd(), "runs", "detect"),
             name="yolo_videos_pred",
             exist_ok=True)
     

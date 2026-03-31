@@ -1,4 +1,18 @@
 import cv2
+import torch
+
+
+def get_device(gpu_avail=True):
+    """GPU が有効な場合、利用可能な最適デバイスを自動検出して返す。
+    優先順位: mps (Apple Silicon) > cuda (NVIDIA) > cpu
+    """
+    if not gpu_avail:
+        return 'cpu'
+    if torch.backends.mps.is_available():
+        return 'mps'
+    if torch.cuda.is_available():
+        return 'cuda:0'
+    return 'cpu'
 
 
 def yolo_to_voc(bbox, img_w, img_h):

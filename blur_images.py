@@ -5,7 +5,7 @@ import cv2
 import yaml
 import argparse
 from ultralytics import YOLO
-from utils import yolo_to_voc, blur_regions
+from utils import yolo_to_voc, blur_regions, get_device
 
 
 parser = argparse.ArgumentParser()
@@ -28,12 +28,13 @@ with open(args.config, 'r') as f:
 
 model = YOLO(config["model_path"])
 
-device = 'cuda:0' if config["gpu_avail"] else 'cpu'
+device = get_device(config["gpu_avail"])
 _ = model(source=config['images_path'],
         save=False,
         save_txt=True,
         conf=config['detection_conf_thresh'],
         device=device,
+        project=os.path.join(os.getcwd(), "runs", "detect"),
         name="yolo_images_pred",
         exist_ok=True)
 
