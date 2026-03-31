@@ -18,6 +18,7 @@ dependencies = [
     "natsort",
     "rich",
     "dill",
+    "lap>=0.5.12",
 ]
 
 [project.optional-dependencies]
