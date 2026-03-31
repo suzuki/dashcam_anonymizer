@@ -109,7 +109,15 @@ def parse_args():
 def load_config(config_path):
     """Load training config from YAML file."""
     with open(config_path) as f:
-        return yaml.safe_load(f)
+        data = yaml.safe_load(f)
+    if data is None:
+        return {}
+    if not isinstance(data, dict):
+        raise ValueError(
+            f"Invalid YAML structure in '{config_path}': "
+            f"expected a mapping, got {type(data).__name__}"
+        )
+    return data
 
 
 def merge_config(args):
@@ -180,8 +188,9 @@ def main():
 
     if config["resume"]:
         model = YOLO(config["resume"])
-        # ultralytics restores all hyperparameters from the checkpoint
-        model.train(resume=True)
+        # ultralytics restores hyperparameters from the checkpoint;
+        # pass device explicitly so resume works across different machines
+        model.train(resume=True, device=device)
     else:
         model = YOLO(config["model"])
         model.train(

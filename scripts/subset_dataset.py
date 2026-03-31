@@ -13,6 +13,7 @@ from pathlib import Path
 import yaml
 
 SPLITS = ["train", "val", "test"]
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
 
 
 def collect_samples(source_dir, split):
@@ -28,7 +29,7 @@ def collect_samples(source_dir, split):
 
     pairs = []
     for img in sorted(images_dir.iterdir()):
-        if not img.is_file():
+        if not img.is_file() or img.suffix.lower() not in IMAGE_EXTENSIONS:
             continue
         label = labels_dir / f"{img.stem}.txt" if labels_dir.exists() else None
         if label and not label.exists():

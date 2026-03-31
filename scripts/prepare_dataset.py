@@ -71,8 +71,9 @@ def remap_labels(labels_dir, valid_class_ids=None):
     """Remap class IDs in YOLO label files and remove non-target classes.
 
     fiftyone exports classes in the order provided, but may include
-    co-occurring objects. This function ensures only our target classes
-    remain with correct IDs (0: face, 1: license_plate).
+    co-occurring objects. This function removes any annotations whose
+    class ID is not in ``valid_class_ids``, preserving the original
+    class IDs for all retained annotations.
 
     Args:
         labels_dir: Path to directory containing YOLO label .txt files.
@@ -155,8 +156,12 @@ def reorganize_to_standard_layout(output_dir):
         dst_labels = labels_root / yolo_split
 
         if src_images.exists():
+            if dst_images.exists():
+                shutil.rmtree(dst_images)
             src_images.rename(dst_images)
         if src_labels.exists():
+            if dst_labels.exists():
+                shutil.rmtree(dst_labels)
             src_labels.rename(dst_labels)
 
         # Clean up the temporary export directory
