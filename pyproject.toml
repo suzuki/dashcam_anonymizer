@@ -24,3 +24,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["gdown", "pytest"]
 train = ["fiftyone>=1.0"]
+
+[tool.uv]
+# fiftyone depends on opencv-python-headless, but ultralytics requires
+# cv2.imshow at import time. Force opencv-python for all extras.
+override-dependencies = ["opencv-python>=4.10"]

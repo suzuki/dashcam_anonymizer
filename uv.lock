@@ -10,6 +10,9 @@ resolution-markers = [
     "python_full_version < '3.13' and sys_platform != 'win32'",
 ]
 
+[manifest]
+overrides = [{ name = "opencv-python", specifier = ">=4.10" }]
+
 [[package]]
 name = "aiofiles"
 version = "25.1.0"
