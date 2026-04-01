@@ -26,6 +26,31 @@ def yolo_to_voc(bbox, img_w, img_h):
     return (x_min, y_min, x_max, y_max)
 
 
+def get_tracking_config(config):
+    """Extract tracking settings from config with defaults."""
+    return {
+        "use_tracking": config.get("use_tracking", False),
+        "tracker": config.get("tracker", "botsort.yaml"),
+        "interpolate_frames": config.get("interpolate_frames", 0),
+    }
+
+
+def open_video_writer(output_path, fps, frame_size, codecs=('avc1', 'mp4v')):
+    """Try to open a VideoWriter with the given codecs, returning the first that works.
+
+    Raises RuntimeError if none of the codecs can be opened.
+    """
+    for codec in codecs:
+        fourcc = cv2.VideoWriter_fourcc(*codec)
+        writer = cv2.VideoWriter(output_path, fourcc, fps, frame_size)
+        if writer.isOpened():
+            return writer
+        writer.release()
+    raise RuntimeError(
+        f"Failed to open video writer for '{output_path}' with codecs {list(codecs)}"
+    )
+
+
 def blur_regions(image, regions, blur_radius=31):
     """Blurs the specified regions using Gaussian Blur."""
     for region in regions:
